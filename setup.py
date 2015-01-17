@@ -10,7 +10,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.2',
+    version='0.2.0',
 
     description='library for accessing aria2c via XML-RPC interface',
     long_description='library for accessing aria2c via XML-RPC interface',
@@ -45,6 +45,9 @@ setup(
         'Programming Language :: Python :: 2.7',
     ],
 
+    # You can just specify the packages manually here if your project is
+    # simple. Or you can use find_packages().
+    packages=find_packages(exclude=['contrib', 'docs', 'tests*'])
 
     #test_suite="tests"
 )

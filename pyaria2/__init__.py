@@ -23,6 +23,10 @@ THE SOFTWARE.
 Description: pyaria2 is a Python 2/3 module that provides a wrapper class around Aria2's RPC interface. It can be used to build applications that use Aria2 for downloading data.
 Author: Killua
 Email: killua_hzl@163.com
+
+Patches to make it work with Python2 and add secure XML-RPC communication
+Author: alfateam123
+Email: alfateam123@nwa.xyz
 '''
 
 #!/usr/bin/env python
@@ -60,8 +64,7 @@ class PyAria2(object):
             self.useSecret = False
             self.fixedSecret = None
 
-        #I don't really give a **** if it's not installed
-        # it will just break and **** $$$ the world.
+        #I don't really give a **** if it's not installed.
         if checkInstallation and not isAria2Installed():
             raise Exception('aria2 is not installed, please install it before.')
 
@@ -77,7 +80,6 @@ class PyAria2(object):
             if rpcSecret and self.useSecret:
                 self.fixedSecret = (self.fixedSecret or self.generateSecret())
                 cmd += " --rpc-secret=%s" % self.fixedSecret
-                self.fixedSecret = "token:"+self.fixedSecret
 
             if not session is None:
                 cmd += ' --input-file=%s' \
@@ -99,6 +101,8 @@ class PyAria2(object):
         else:
             print('aria2 RPC server is already running.')
 
+        self.fixedSecret = "token:"+self.fixedSecret
+        #print("using secret: {0} - secret: {1}".format(self.useSecret, self.fixedSecret))
         server_uri = PyAria2.SERVER_URI_FORMAT.format(host, port)
         self.server = xmlrpclib.ServerProxy(server_uri, allow_none=True)
 

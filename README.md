@@ -1,7 +1,7 @@
 Description
 =======
 
-pyaria2 is a Python 3 module that provides a wrapper class around Aria2's RPC interface. It can be used to build applications that use Aria2 for downloading data.
+pyaria2 is a Python 2-3 module that provides a wrapper class around Aria2's RPC interface. It can be used to build applications that use Aria2 for downloading data.
 
 Aria2
 =======

@@ -29,7 +29,10 @@ Email: killua_hzl@163.com
 # -*- coding: utf-8 -*-
 
 import subprocess
-import xmlrpc.client
+try:
+    import xmlrpc.client as xmlrpclib
+except ImportError:
+    import xmlrpclib
 import os
 import time
 
@@ -79,7 +82,7 @@ class PyAria2(object):
             print('aria2 RPC server is already running.')
 
         server_uri = SERVER_URI_FORMAT.format(host, port)
-        self.server = xmlrpc.client.ServerProxy(server_uri, allow_none=True)
+        self.server = xmlrpclib.ServerProxy(server_uri, allow_none=True)
 
     def addUri(self, uris, options=None, position=None):
         '''
@@ -104,7 +107,7 @@ class PyAria2(object):
 
         return: This method returns GID of registered download.
         '''
-        return self.server.aria2.addTorrent(xmlrpc.client.Binary(open(torrent, 'rb').read()), uris, options, position)
+        return self.server.aria2.addTorrent(xmlrpclib.Binary(open(torrent, 'rb').read()), uris, options, position)
 
     def addMetalink(self, metalink, options=None, position=None):
         '''
@@ -116,7 +119,7 @@ class PyAria2(object):
 
         return: This method returns list of GID of registered download.
         '''
-        return self.server.aria2.addMetalink(xmlrpc.client.Binary(open(metalink, 'rb').read()), options, position)
+        return self.server.aria2.addMetalink(xmlrpclib.Binary(open(metalink, 'rb').read()), options, position)
 
     def remove(self, gid):
         '''

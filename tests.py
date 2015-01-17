@@ -1,14 +1,36 @@
-#import unittest
 from pyaria2 import PyAria2 as aria
+import argparse
 
-# ARIA_HOST = 'localhost'
-# ARIA_PORT = 6800
+try:
+  input=raw_input
+except:
+  pass
 
-# class TestAriaRunning(unittest.TestCase):
-#     def setUp(self):
-server = aria(rpcSecret={"useSecret":True, "fixedSecret":'ABCDEF'})
+"""
+A simple testbed for pyaria2 functionalities.
+A connection to an aria2c instance is done (spawned if needed!),
+checked it has no files, add a torrent, check it's added correctly,
+and then shut down the aria2c instance.
+"""
 
-#     def test_tellActive(self):
+parser = argparse.ArgumentParser()
+parser.add_argument("--host", dest="host", default="localhost")
+parser.add_argument("--port", dest="port", default=6800)
+parser.add_argument("--secret", dest="secret", default="ABCDEF")
+parser.add_argument("--shutdown", dest="shutdown", default=True, type=bool)
+parser.add_argument("newtorrent")
 
-print server.tellActive()
+args = parser.parse_args()
+server = aria( args.host, args.port,
+               rpcSecret={"useSecret":True, "fixedSecret":args.secret})
 
+print("files actually downloaded by aria2c: ", server.tellActive())
+input("press enter to continue...")
+server.addTorrent(args.newtorrent)
+print("you should have more!", server.tellActive())
+input("press enter to continue...")
+if args.shutdown:
+  server.shutdown()
+  print("server shut down correctly")
+
+print("the test was executed correctly. gg.")

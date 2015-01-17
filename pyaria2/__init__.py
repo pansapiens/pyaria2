@@ -39,7 +39,7 @@ except ImportError:
     import xmlrpclib
 import os
 import time
-from string import letters
+from string import ascii_letters
 from random import choice
 
 class PyAria2(object):
@@ -109,7 +109,7 @@ class PyAria2(object):
     def generateSecret(self):
         def gimmeLetters(how_many):
             for i in range(how_many):
-                yield choice(letters)
+                yield choice(ascii_letters)
         return "".join(gimmeLetters(15))
 
     def addUri(self, uris, options=None, position=None):

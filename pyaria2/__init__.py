@@ -41,6 +41,7 @@ import os
 import time
 from string import ascii_letters
 from random import choice
+import socket
 
 class PyAria2(object):
     SERVER_URI_FORMAT = 'http://{}:{:d}/rpc'
@@ -59,7 +60,7 @@ class PyAria2(object):
         self.session = session
         if rpcSecret:
             self.useSecret =  rpcSecret["useSecret"]
-            self.fixedSecret = rpcSecret["fixedSecret"]
+            self.fixedSecret = rpcSecret["secret"]
         else:
             self.useSecret = False
             self.fixedSecret = None
@@ -68,7 +69,10 @@ class PyAria2(object):
         if checkInstallation and not isAria2Installed():
             raise Exception('aria2 is not installed, please install it before.')
 
-        if not isAria2rpcRunning():
+        server_uri = PyAria2.SERVER_URI_FORMAT.format(host, port)
+        self.server = xmlrpclib.ServerProxy(server_uri, allow_none=True)
+
+        if not self.isAria2rpcRunning():
             cmd = 'aria2c' \
                   ' --enable-rpc' \
                   ' --rpc-listen-port %d' \
@@ -88,23 +92,20 @@ class PyAria2(object):
 
             subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
+    
             count = 0
             while True:
-                if isAria2rpcRunning():
+                if self.isAria2rpcRunning():
                     break
                 else:
                     count += 1
                     time.sleep(3)
                 if count == 5:
                     raise Exception('aria2 RPC server started failure.')
-            print('aria2 RPC server is started.')
+            #print('aria2 RPC server is started.')
         else:
-            print('aria2 RPC server is already running.')
+            pass #print('aria2 RPC server is already running.')
 
-        self.fixedSecret = "token:"+self.fixedSecret
-        #print("using secret: {0} - secret: {1}".format(self.useSecret, self.fixedSecret))
-        server_uri = PyAria2.SERVER_URI_FORMAT.format(host, port)
-        self.server = xmlrpclib.ServerProxy(server_uri, allow_none=True)
 
     def generateSecret(self):
         def gimmeLetters(how_many):
@@ -123,7 +124,7 @@ class PyAria2(object):
         return: This method returns GID of registered download.
         '''
         if self.useSecret:
-            return self.server.aria2.addUri(self.fixedSecret, self.fixedSecret, uris, options, position)
+            return self.server.aria2.addUri("token:"+self.fixedSecret, uris, options, position)
         else:
             return self.server.aria2.addUri(uris, options, position)
     
@@ -141,7 +142,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.addTorrent(self.fixedSecret, xmlrpclib.Binary(open(torrent, 'rb').read()), uris, options, position)
+            return self.server.aria2.addTorrent("token:"+self.fixedSecret, xmlrpclib.Binary(open(torrent, 'rb').read()), uris, options, position)
         else:
             return self.server.aria2.addTorrent(xmlrpclib.Binary(open(torrent, 'rb').read()), uris, options, position)
     
@@ -158,7 +159,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.addMetalink(self.fixedSecret, xmlrpclib.Binary(open(metalink, 'rb').read()), options, position)
+            return self.server.aria2.addMetalink("token:"+self.fixedSecret, xmlrpclib.Binary(open(metalink, 'rb').read()), options, position)
         else:
             return self.server.aria2.addMetalink(xmlrpclib.Binary(open(metalink, 'rb').read()), options, position)
     
@@ -173,7 +174,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.remove(self.fixedSecret, gid)
+            return self.server.aria2.remove("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.remove(gid)
     
@@ -188,7 +189,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.forceRemove(self.fixedSecret, gid)
+            return self.server.aria2.forceRemove("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.forceRemove(gid)
     
@@ -203,7 +204,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.pause(self.fixedSecret, gid)
+            return self.server.aria2.pause("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.pause(gid)
     
@@ -216,7 +217,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.pauseAll(self.fixedSecret)
+            return self.server.aria2.pauseAll("token:"+self.fixedSecret)
         else:
             return self.server.aria2.pauseAll()
     
@@ -231,7 +232,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.forcePause(self.fixedSecret, gid)
+            return self.server.aria2.forcePause("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.forcePause(gid)
     
@@ -244,7 +245,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.forcePauseAll(self.fixedSecret)
+            return self.server.aria2.forcePauseAll("token:"+self.fixedSecret)
         else:
             return self.server.aria2.forcePauseAll()
     
@@ -259,7 +260,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.unpause(self.fixedSecret, gid)
+            return self.server.aria2.unpause("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.unpause(gid)
     
@@ -272,7 +273,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.unpauseAll(self.fixedSecret)
+            return self.server.aria2.unpauseAll("token:"+self.fixedSecret)
         else:
             return self.server.aria2.unpauseAll()
     
@@ -288,7 +289,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.tellStatus(self.fixedSecret, gid, keys)
+            return self.server.aria2.tellStatus("token:"+self.fixedSecret, gid, keys)
         else:
             return self.server.aria2.tellStatus(gid, keys)
     
@@ -303,7 +304,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getUris(self.fixedSecret, gid)
+            return self.server.aria2.getUris("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.getUris(gid)
     
@@ -318,7 +319,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getFiles(self.fixedSecret, gid)
+            return self.server.aria2.getFiles("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.getFiles(gid)
     
@@ -333,7 +334,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getPeers(self.fixedSecret, gid)
+            return self.server.aria2.getPeers("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.getPeers(gid)
     
@@ -348,7 +349,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getServers(self.fixedSecret, gid)
+            return self.server.aria2.getServers("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.getServers(gid)
     
@@ -363,7 +364,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.tellActive(self.fixedSecret, keys)
+            return self.server.aria2.tellActive("token:"+self.fixedSecret, keys)
         else:
             return self.server.aria2.tellActive(keys)
     
@@ -380,7 +381,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.tellWaiting(self.fixedSecret, offset, num, keys)
+            return self.server.aria2.tellWaiting("token:"+self.fixedSecret, offset, num, keys)
         else:
             return self.server.aria2.tellWaiting(offset, num, keys)
     
@@ -397,7 +398,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.tellStopped(self.fixedSecret, offset, num, keys)
+            return self.server.aria2.tellStopped("token:"+self.fixedSecret, offset, num, keys)
         else:
             return self.server.aria2.tellStopped(offset, num, keys)
     
@@ -417,7 +418,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.changePosition(self.fixedSecret, gid, pos, how)
+            return self.server.aria2.changePosition("token:"+self.fixedSecret, gid, pos, how)
         else:
             return self.server.aria2.changePosition(gid, pos, how)
     
@@ -436,7 +437,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.changeUri(self.fixedSecret, gid, fileIndex, delUris, addUris, position)
+            return self.server.aria2.changeUri("token:"+self.fixedSecret, gid, fileIndex, delUris, addUris, position)
         else:
             return self.server.aria2.changeUri(gid, fileIndex, delUris, addUris, position)
     
@@ -451,7 +452,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getOption(self.fixedSecret, gid)
+            return self.server.aria2.getOption("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.getOption(gid)
     
@@ -467,7 +468,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.changeOption(self.fixedSecret, gid, options)
+            return self.server.aria2.changeOption("token:"+self.fixedSecret, gid, options)
         else:
             return self.server.aria2.changeOption(gid, options)
     
@@ -480,7 +481,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getGlobalOption(self.fixedSecret)
+            return self.server.aria2.getGlobalOption("token:"+self.fixedSecret)
         else:
             return self.server.aria2.getGlobalOption()
     
@@ -495,7 +496,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.changeGlobalOption(self.fixedSecret, options)
+            return self.server.aria2.changeGlobalOption("token:"+self.fixedSecret, options)
         else:
             return self.server.aria2.changeGlobalOption(options)
     
@@ -508,7 +509,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getGlobalStat(self.fixedSecret)
+            return self.server.aria2.getGlobalStat("token:"+self.fixedSecret)
         else:
             return self.server.aria2.getGlobalStat()
     
@@ -521,7 +522,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.purgeDownloadResult(self.fixedSecret)
+            return self.server.aria2.purgeDownloadResult("token:"+self.fixedSecret)
         else:
             return self.server.aria2.purgeDownloadResult()
     
@@ -534,7 +535,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.removeDownloadResult(self.fixedSecret, gid)
+            return self.server.aria2.removeDownloadResult("token:"+self.fixedSecret, gid)
         else:
             return self.server.aria2.removeDownloadResult(gid)
     
@@ -547,7 +548,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getVersion(self.fixedSecret)
+            return self.server.aria2.getVersion("token:"+self.fixedSecret)
         else:
             return self.server.aria2.getVersion()
     
@@ -560,7 +561,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.getSessionInfo(self.fixedSecret)
+            return self.server.aria2.getSessionInfo("token:"+self.fixedSecret)
         else:
             return self.server.aria2.getSessionInfo()
     
@@ -573,7 +574,7 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.shutdown(self.fixedSecret)
+            return self.server.aria2.shutdown("token:"+self.fixedSecret)
         else:
             return self.server.aria2.shutdown()
     
@@ -586,10 +587,17 @@ class PyAria2(object):
         '''
         
         if self.useSecret:
-            return self.server.aria2.forceShutdown(self.fixedSecret)
+            return self.server.aria2.forceShutdown("token:"+self.fixedSecret)
         else:
             return self.server.aria2.forceShutdown()
     
+    def isAria2rpcRunning(self):
+        #I need to check if _the aria2c I NEED_ exists, not some random aria2c instance!
+        try:
+            #print("getVersion returned: {0}".format(self.getVersion()))
+            return True
+        except socket.error:
+            return False
 
 def isAria2Installed():
     for cmdpath in os.environ['PATH'].split(':'):
@@ -598,11 +606,4 @@ def isAria2Installed():
 
     return False
 
-def isAria2rpcRunning():
-    pgrep_process = subprocess.Popen('pgrep -l aria2', shell=True, stdout=subprocess.PIPE)
-
-    if pgrep_process.stdout.readline() == b'':
-        return False
-    else:
-        return True
 

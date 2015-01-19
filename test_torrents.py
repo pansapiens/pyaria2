@@ -22,11 +22,11 @@ parser.add_argument("newtorrent")
 
 args = parser.parse_args()
 server = aria( args.host, args.port,
-               rpcSecret={"useSecret":True, "fixedSecret":args.secret})
+               rpcSecret={"useSecret":True, "secret":args.secret})
 
 print("files actually downloaded by aria2c: ", server.tellActive())
 input("press enter to continue...")
-server.addTorrent(args.newtorrent)
+server.addTorrent(args.newtorrent, options=dict(dir="."))
 print("you should have more!", server.tellActive())
 input("press enter to continue...")
 if args.shutdown:

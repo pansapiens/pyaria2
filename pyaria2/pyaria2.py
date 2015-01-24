@@ -45,6 +45,8 @@ import socket
 
 class PyAria2(object):
     SERVER_URI_FORMAT = 'http://{}:{:d}/rpc'
+    UPPER_PORT_LIMIT = 65535
+    LOWER_PORT_LIMIT = 1024
 
     def __init__(self, host='localhost', port=6800, session=None,
                         rpcSecret=None, checkInstallation=False):
@@ -55,6 +57,8 @@ class PyAria2(object):
         port: integer, aria2 rpc port, default is 6800
         session: string, aria2 rpc session saving.
         '''
+        assert PyAria2.LOWER_PORT_LIMIT <= port <= PyAria2.UPPER_PORT_LIMIT,  \
+               "port is not between {0} and {1}".format(PyAria2.LOWER_PORT_LIMIT, PyAria2.UPPER_PORT_LIMIT)
         self.host = host
         self.port = port
         self.session = session
@@ -113,6 +117,13 @@ class PyAria2(object):
                 yield choice(ascii_letters)
         return "".join(gimmeLetters(15))
 
+
+    def fixOptions(self, options):
+        return options or dict()
+
+    def fixUris(self, uris):
+        return uris or list()
+
     def addUri(self, uris, options=None, position=None):
         '''
         This method adds new HTTP(S)/FTP/BitTorrent Magnet URI.
@@ -123,12 +134,12 @@ class PyAria2(object):
 
         return: This method returns GID of registered download.
         '''
+        uris, options = self.fixUris(uris), self.fixOptions(options)
         if self.useSecret:
             return self.server.aria2.addUri("token:"+self.fixedSecret, uris, options, position)
         else:
             return self.server.aria2.addUri(uris, options, position)
     
-
     def addTorrent(self, torrent, uris=None, options=None, position=None):
         '''
         This method adds BitTorrent download by uploading ".torrent" file.
@@ -140,14 +151,12 @@ class PyAria2(object):
 
         return: This method returns GID of registered download.
         '''
-        
+        uris, options = self.fixUris(uris), self.fixOptions(options)
         if self.useSecret:
-            return self.server.aria2.addTorrent("token:"+self.fixedSecret, 
-                xmlrpclib.Binary(open(torrent).read()), uris or [], options or dict(), position or 0)
+            return self.server.aria2.addTorrent("token:"+self.fixedSecret, xmlrpclib.Binary(open(torrent).read()), uris, options, position)
         else:
             return self.server.aria2.addTorrent(xmlrpclib.Binary(open(torrent).read()), uris, options, position)
     
-
     def addMetalink(self, metalink, options=None, position=None):
         '''
         This method adds Metalink download by uploading ".metalink" file.
@@ -158,7 +167,7 @@ class PyAria2(object):
 
         return: This method returns list of GID of registered download.
         '''
-        
+        options = self.fixOptions(options)
         if self.useSecret:
             return self.server.aria2.addMetalink("token:"+self.fixedSecret, xmlrpclib.Binary(open(metalink, 'rb').read()), options, position)
         else:

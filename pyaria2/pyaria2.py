@@ -153,11 +153,15 @@ class PyAria2(object):
         return: This method returns GID of registered download.
         '''
         uris, options = self.fixUris(uris), self.fixOptions(options)
-        if self.useSecret:
-            return self.server.aria2.addTorrent("token:"+self.fixedSecret, xmlrpclib.Binary(open(torrent).read()), uris, options, position)
-        else:
-            return self.server.aria2.addTorrent(xmlrpclib.Binary(open(torrent).read()), uris, options, position)
-    
+        with open(torrent, "rb") as torrentfile:
+            content = torrentfile.read()
+            binaryContent = xmlrpclib.Binary(content)
+            if self.useSecret:
+                fixedSecretPhrase = "token:{}".format(self.fixedSecret)
+                return self.server.aria2.addTorrent(fixedSecretPhrase, binaryContent, uris, options, position)
+            else:
+                return self.server.aria2.addTorrent(binaryContent, uris, options, position)
+
     def addMetalink(self, metalink, options=None, position=None):
         '''
         This method adds Metalink download by uploading ".metalink" file.

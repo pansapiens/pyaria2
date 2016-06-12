@@ -97,7 +97,6 @@ class PyAria2(object):
               ' --max-concurrent-downloads={max_downloads}' \
               ' --max-connection-per-server={max_connections}' \
               ' --max-download-limit={max_download_speed}' \
-              ' --dir=%(download_dir)s' \
               ' --rpc-max-request-size=1024M'
 
         if "download_dir" in settings:

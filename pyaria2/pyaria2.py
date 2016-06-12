@@ -23,33 +23,32 @@ THE SOFTWARE.
 Description: pyaria2 is a Python 2/3 module that provides a wrapper class around Aria2's RPC interface. It can be used to build applications that use Aria2 for downloading data.
 Author: Killua
 Email: killua_hzl@163.com
-
-Patches to make it work with Python2 and add secure XML-RPC communication
-Author: alfateam123
-Email: alfateam123@nwa.xyz
 '''
 
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import subprocess
-try:
-    import xmlrpc.client as xmlrpclib
-except ImportError:
-    import xmlrpclib
+
+import xmlrpc.client as xmlrpclib
 import os
 import time
+
 from string import ascii_letters
 from random import choice
-import socket
+
+DEFAULT_HOST = 'localhost'
+DEFAULT_PORT = 6800
+SERVER_URI_FORMAT = 'http://{}:{:d}/rpc'
+
+UPPER_PORT_LIMIT = 65535
+LOWER_PORT_LIMIT = 1024
+
 
 class PyAria2(object):
-    SERVER_URI_FORMAT = 'http://{}:{:d}/rpc'
-    UPPER_PORT_LIMIT = 65535
-    LOWER_PORT_LIMIT = 1024
-
-    def __init__(self, host='localhost', port=6800, session=None,
-                        rpcSecret=None, checkInstallation=False):
+    def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, session=None,
+                 rpc_secret=None, max_connections=20, max_downloads=1,
+                 max_download_speed="200K", download_dir=None):
         '''
         PyAria2 constructor.
 
@@ -57,67 +56,79 @@ class PyAria2(object):
         port: integer, aria2 rpc port, default is 6800
         session: string, aria2 rpc session saving.
         '''
-        assert PyAria2.LOWER_PORT_LIMIT <= port <= PyAria2.UPPER_PORT_LIMIT,  \
-               "port is not between {0} and {1}".format(PyAria2.LOWER_PORT_LIMIT, PyAria2.UPPER_PORT_LIMIT)
-        self.host = host
-        self.port = port
-        self.session = session
-        if rpcSecret:
-            self.useSecret =  rpcSecret["useSecret"]
-            self.fixedSecret = rpcSecret["secret"]
+        if not PyAria2.LOWER_PORT_LIMIT <= port <= PyAria2.UPPER_PORT_LIMIT:
+            raise Exception(
+                "port is not between {0} and {1}".format(PyAria2.LOWER_PORT_LIMIT, PyAria2.UPPER_PORT_LIMIT)
+            )
+
+        if rpc_secret is not None:
+            self.useSecret = True
+            self.rpcSecret = rpc_secret
         else:
             self.useSecret = False
-            self.fixedSecret = None
+            self.rpcSecret = None
 
-        #I don't really give a **** if it's not installed.
-        if checkInstallation and not isAria2Installed():
+        if not isAria2Installed():
             raise Exception('aria2 is not installed, please install it before.')
 
-        server_uri = PyAria2.SERVER_URI_FORMAT.format(host, port)
+        settings = {
+            "port": port,
+            "max_downloads": max_downloads,
+            "max_connections": max_connections,
+            "max_download_speed": max_download_speed,
+        }
+
+        if download_dir is not None:
+            settings["download_dir"] = download_dir
+
+        server_uri = SERVER_URI_FORMAT.format(host, port)
         self.server = xmlrpclib.ServerProxy(server_uri, allow_none=True)
 
-        if not self.isAria2rpcRunning():
-            cmd = 'aria2c' \
-                  ' --enable-rpc' \
-                  ' --rpc-listen-all=true' \
-                  ' --rpc-listen-port %d' \
-                  ' --continue' \
-                  ' --max-concurrent-downloads=20' \
-                  ' --max-connection-per-server=10' \
-                  ' --rpc-max-request-size=1024M' % port
-
-            if rpcSecret and self.useSecret:
-                self.fixedSecret = (self.fixedSecret or self.generateSecret())
-                cmd += " --rpc-secret=%s" % self.fixedSecret
-
-            if not session is None:
-                cmd += ' --input-file=%s' \
-                       ' --save-session-interval=60' \
-                       ' --save-session=%s' % (session, session)
-
-            subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-
-    
-            count = 0
-            while True:
-                if self.isAria2rpcRunning():
-                    break
-                else:
-                    count += 1
-                    time.sleep(3)
-                if count == 5:
-                    raise Exception('aria2 RPC server started failure.')
-            #print('aria2 RPC server is started.')
+        if not isAria2rpcRunning():
+            self.start_aria_server(session, settings)
         else:
-            pass #print('aria2 RPC server is already running.')
+            pass  # print('aria2 RPC server is already running.')
 
+    def start_aria_server(self, session, settings):
+        cmd = 'aria2c' \
+              ' --enable-rpc' \
+              ' --rpc-listen-port %(port)d' \
+              ' --continue' \
+              ' --max-concurrent-downloads=%(max_downloads)s' \
+              ' --max-connection-per-server=%(max_connections)' \
+              ' --max-download-limit=%(max_download_speed)' \
+              ' --dir=%(download_dir)s' \
+              ' --rpc-max-request-size=1024M' % settings
+
+        if self.useSecret:
+            cmd += " --rpc-secret=%s" % self.rpcSecret
+
+        if not session is None:
+            cmd += ' --input-file=%s' \
+                   ' --save-session-interval=60' \
+                   ' --save-session=%s' % (session, session)
+
+        subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+
+        count = 0
+
+        while True:
+            if isAria2rpcRunning():
+                break
+            else:
+                count += 1
+                time.sleep(3)
+            if count == 10:
+                raise Exception('aria2 RPC server started failure.')
+
+        print('aria2 RPC server is started.')
 
     def generateSecret(self):
         def gimmeLetters(how_many):
             for i in range(how_many):
                 yield choice(ascii_letters)
-        return "".join(gimmeLetters(15))
 
+        return "".join(gimmeLetters(15))
 
     def fixOptions(self, options):
         return options or dict()
@@ -137,10 +148,10 @@ class PyAria2(object):
         '''
         uris, options = self.fixUris(uris), self.fixOptions(options)
         if self.useSecret:
-            return self.server.aria2.addUri("token:"+self.fixedSecret, uris, options, position)
+            return self.server.aria2.addUri("token:" + self.rpcSecret, uris, options, position)
         else:
             return self.server.aria2.addUri(uris, options, position)
-    
+
     def addTorrent(self, torrent, uris=None, options=None, position=None):
         '''
         This method adds BitTorrent download by uploading ".torrent" file.
@@ -157,7 +168,7 @@ class PyAria2(object):
             content = torrentfile.read()
             binaryContent = xmlrpclib.Binary(content)
             if self.useSecret:
-                fixedSecretPhrase = "token:{}".format(self.fixedSecret)
+                fixedSecretPhrase = "token:{}".format(self.rpcSecret)
                 return self.server.aria2.addTorrent(fixedSecretPhrase, binaryContent, uris, options, position)
             else:
                 return self.server.aria2.addTorrent(binaryContent, uris, options, position)
@@ -174,10 +185,10 @@ class PyAria2(object):
         '''
         options = self.fixOptions(options)
         if self.useSecret:
-            return self.server.aria2.addMetalink("token:"+self.fixedSecret, xmlrpclib.Binary(open(metalink, 'rb').read()), options, position)
+            return self.server.aria2.addMetalink("token:" + self.rpcSecret,
+                                                 xmlrpclib.Binary(open(metalink, 'rb').read()), options, position)
         else:
             return self.server.aria2.addMetalink(xmlrpclib.Binary(open(metalink, 'rb').read()), options, position)
-    
 
     def remove(self, gid):
         '''
@@ -187,12 +198,11 @@ class PyAria2(object):
 
         return: This method returns GID of removed download.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.remove("token:"+self.fixedSecret, gid)
+            return self.server.aria2.remove("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.remove(gid)
-    
 
     def forceRemove(self, gid):
         '''
@@ -202,12 +212,11 @@ class PyAria2(object):
 
         return: This method returns GID of removed download.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.forceRemove("token:"+self.fixedSecret, gid)
+            return self.server.aria2.forceRemove("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.forceRemove(gid)
-    
 
     def pause(self, gid):
         '''
@@ -217,12 +226,11 @@ class PyAria2(object):
 
         return: This method returns GID of paused download.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.pause("token:"+self.fixedSecret, gid)
+            return self.server.aria2.pause("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.pause(gid)
-    
 
     def pauseAll(self):
         '''
@@ -230,12 +238,11 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.pauseAll("token:"+self.fixedSecret)
+            return self.server.aria2.pauseAll("token:" + self.rpcSecret)
         else:
             return self.server.aria2.pauseAll()
-    
 
     def forcePause(self, gid):
         '''
@@ -245,12 +252,11 @@ class PyAria2(object):
 
         return: This method returns GID of paused download.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.forcePause("token:"+self.fixedSecret, gid)
+            return self.server.aria2.forcePause("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.forcePause(gid)
-    
 
     def forcePauseAll(self):
         '''
@@ -258,12 +264,11 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.forcePauseAll("token:"+self.fixedSecret)
+            return self.server.aria2.forcePauseAll("token:" + self.rpcSecret)
         else:
             return self.server.aria2.forcePauseAll()
-    
 
     def unpause(self, gid):
         '''
@@ -273,12 +278,11 @@ class PyAria2(object):
 
         return: This method returns GID of unpaused download.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.unpause("token:"+self.fixedSecret, gid)
+            return self.server.aria2.unpause("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.unpause(gid)
-    
 
     def unpauseAll(self):
         '''
@@ -286,12 +290,11 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.unpauseAll("token:"+self.fixedSecret)
+            return self.server.aria2.unpauseAll("token:" + self.rpcSecret)
         else:
             return self.server.aria2.unpauseAll()
-    
 
     def tellStatus(self, gid, keys=None):
         '''
@@ -302,12 +305,11 @@ class PyAria2(object):
 
         return: The method response is of type dict and it contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.tellStatus("token:"+self.fixedSecret, gid, keys)
+            return self.server.aria2.tellStatus("token:" + self.rpcSecret, gid, keys)
         else:
             return self.server.aria2.tellStatus(gid, keys)
-    
 
     def getUris(self, gid):
         '''
@@ -317,12 +319,11 @@ class PyAria2(object):
 
         return: The method response is of type list and its element is of type dict and it contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getUris("token:"+self.fixedSecret, gid)
+            return self.server.aria2.getUris("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.getUris(gid)
-    
 
     def getFiles(self, gid):
         '''
@@ -332,12 +333,11 @@ class PyAria2(object):
 
         return: The method response is of type list and its element is of type dict and it contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getFiles("token:"+self.fixedSecret, gid)
+            return self.server.aria2.getFiles("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.getFiles(gid)
-    
 
     def getPeers(self, gid):
         '''
@@ -347,12 +347,11 @@ class PyAria2(object):
 
         return: The method response is of type list and its element is of type dict and it contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getPeers("token:"+self.fixedSecret, gid)
+            return self.server.aria2.getPeers("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.getPeers(gid)
-    
 
     def getServers(self, gid):
         '''
@@ -362,12 +361,11 @@ class PyAria2(object):
 
         return: The method response is of type list and its element is of type dict and it contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getServers("token:"+self.fixedSecret, gid)
+            return self.server.aria2.getServers("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.getServers(gid)
-    
 
     def tellActive(self, keys=None):
         '''
@@ -377,12 +375,11 @@ class PyAria2(object):
 
         return: The method response is of type list and its element is of type dict and it contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.tellActive("token:"+self.fixedSecret, keys)
+            return self.server.aria2.tellActive("token:" + self.rpcSecret, keys)
         else:
             return self.server.aria2.tellActive(keys)
-    
 
     def tellWaiting(self, offset, num, keys=None):
         '''
@@ -394,12 +391,11 @@ class PyAria2(object):
 
         return: The method response is of type list and its element is of type dict and it contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.tellWaiting("token:"+self.fixedSecret, offset, num, keys)
+            return self.server.aria2.tellWaiting("token:" + self.rpcSecret, offset, num, keys)
         else:
             return self.server.aria2.tellWaiting(offset, num, keys)
-    
 
     def tellStopped(self, offset, num, keys=None):
         '''
@@ -411,12 +407,11 @@ class PyAria2(object):
 
         return: The method response is of type list and its element is of type dict and it contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.tellStopped("token:"+self.fixedSecret, offset, num, keys)
+            return self.server.aria2.tellStopped("token:" + self.rpcSecret, offset, num, keys)
         else:
             return self.server.aria2.tellStopped(offset, num, keys)
-    
 
     def changePosition(self, gid, pos, how):
         '''
@@ -431,12 +426,11 @@ class PyAria2(object):
 
         return: The response is of type integer and it is the destination position.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.changePosition("token:"+self.fixedSecret, gid, pos, how)
+            return self.server.aria2.changePosition("token:" + self.rpcSecret, gid, pos, how)
         else:
             return self.server.aria2.changePosition(gid, pos, how)
-    
 
     def changeUri(self, gid, fileIndex, delUris, addUris, position=None):
         '''
@@ -450,12 +444,11 @@ class PyAria2(object):
 
         return: This method returns a list which contains 2 integers. The first integer is the number of URIs deleted. The second integer is the number of URIs added.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.changeUri("token:"+self.fixedSecret, gid, fileIndex, delUris, addUris, position)
+            return self.server.aria2.changeUri("token:" + self.rpcSecret, gid, fileIndex, delUris, addUris, position)
         else:
             return self.server.aria2.changeUri(gid, fileIndex, delUris, addUris, position)
-    
 
     def getOption(self, gid):
         '''
@@ -465,12 +458,11 @@ class PyAria2(object):
 
         return: The response is of type dict.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getOption("token:"+self.fixedSecret, gid)
+            return self.server.aria2.getOption("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.getOption(gid)
-    
 
     def changeOption(self, gid, options):
         '''
@@ -481,12 +473,11 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.changeOption("token:"+self.fixedSecret, gid, options)
+            return self.server.aria2.changeOption("token:" + self.rpcSecret, gid, options)
         else:
             return self.server.aria2.changeOption(gid, options)
-    
 
     def getGlobalOption(self):
         '''
@@ -494,12 +485,11 @@ class PyAria2(object):
 
         return: The method response is of type dict.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getGlobalOption("token:"+self.fixedSecret)
+            return self.server.aria2.getGlobalOption("token:" + self.rpcSecret)
         else:
             return self.server.aria2.getGlobalOption()
-    
 
     def changeGlobalOption(self, options):
         '''
@@ -509,12 +499,11 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.changeGlobalOption("token:"+self.fixedSecret, options)
+            return self.server.aria2.changeGlobalOption("token:" + self.rpcSecret, options)
         else:
             return self.server.aria2.changeGlobalOption(options)
-    
 
     def getGlobalStat(self):
         '''
@@ -522,12 +511,11 @@ class PyAria2(object):
 
         return: The method response is of type struct and contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getGlobalStat("token:"+self.fixedSecret)
+            return self.server.aria2.getGlobalStat("token:" + self.rpcSecret)
         else:
             return self.server.aria2.getGlobalStat()
-    
 
     def purgeDownloadResult(self):
         '''
@@ -535,12 +523,11 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.purgeDownloadResult("token:"+self.fixedSecret)
+            return self.server.aria2.purgeDownloadResult("token:" + self.rpcSecret)
         else:
             return self.server.aria2.purgeDownloadResult()
-    
 
     def removeDownloadResult(self, gid):
         '''
@@ -548,12 +535,11 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.removeDownloadResult("token:"+self.fixedSecret, gid)
+            return self.server.aria2.removeDownloadResult("token:" + self.rpcSecret, gid)
         else:
             return self.server.aria2.removeDownloadResult(gid)
-    
 
     def getVersion(self):
         '''
@@ -561,12 +547,11 @@ class PyAria2(object):
 
         return: The method response is of type dict and contains following keys.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getVersion("token:"+self.fixedSecret)
+            return self.server.aria2.getVersion("token:" + self.rpcSecret)
         else:
             return self.server.aria2.getVersion()
-    
 
     def getSessionInfo(self):
         '''
@@ -574,12 +559,11 @@ class PyAria2(object):
 
         return: The response is of type dict.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.getSessionInfo("token:"+self.fixedSecret)
+            return self.server.aria2.getSessionInfo("token:" + self.rpcSecret)
         else:
             return self.server.aria2.getSessionInfo()
-    
 
     def shutdown(self):
         '''
@@ -587,12 +571,11 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.shutdown("token:"+self.fixedSecret)
+            return self.server.aria2.shutdown("token:" + self.rpcSecret)
         else:
             return self.server.aria2.shutdown()
-    
 
     def forceShutdown(self):
         '''
@@ -600,19 +583,12 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        
+
         if self.useSecret:
-            return self.server.aria2.forceShutdown("token:"+self.fixedSecret)
+            return self.server.aria2.forceShutdown("token:" + self.rpcSecret)
         else:
             return self.server.aria2.forceShutdown()
-    
-    def isAria2rpcRunning(self):
-        #I need to check if _the aria2c I NEED_ exists, not some random aria2c instance!
-        try:
-            self.getVersion()
-            return True
-        except socket.error:
-            return False
+
 
 def isAria2Installed():
     for cmdpath in os.environ['PATH'].split(':'):
@@ -622,3 +598,10 @@ def isAria2Installed():
     return False
 
 
+def isAria2rpcRunning():
+    pgrep_process = subprocess.Popen('pgrep -l aria2', shell=True, stdout=subprocess.PIPE)
+
+    if pgrep_process.stdout.readline() == b'':
+        return False
+    else:
+        return True

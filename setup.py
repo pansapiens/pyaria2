@@ -16,10 +16,10 @@ setup(
     long_description='library for accessing aria2c via XML-RPC interface',
 
     # The project's main homepage.
-    url='https://github.com/alfateam123/pyaria2',
+    url='https://github.com/kevinxhuang/pyaria2',
 
     # Author details
-    author='alfateam123',
+    author='Kevin Xhuang',
 
     # Choose your license
     license='MIT',

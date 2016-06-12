@@ -91,13 +91,13 @@ class PyAria2(object):
 
     def start_aria_server(self, session, settings):
         raw_cmd = 'aria2c' \
-              ' --enable-rpc' \
-              ' --rpc-listen-port {port}' \
-              ' --continue' \
-              ' --max-concurrent-downloads={max_downloads}' \
-              ' --max-connection-per-server={max_connections}' \
-              ' --max-download-limit={max_download_speed}' \
-              ' --rpc-max-request-size=1024M'
+                  ' --enable-rpc' \
+                  ' --rpc-listen-port {port}' \
+                  ' --continue' \
+                  ' --max-concurrent-downloads={max_downloads}' \
+                  ' --max-connection-per-server={max_connections}' \
+                  ' --max-download-limit={max_download_speed}' \
+                  ' --rpc-max-request-size=1024M'
 
         if "download_dir" in settings:
             raw_cmd += ' --dir={download_dir}'
@@ -107,7 +107,7 @@ class PyAria2(object):
         if self.useSecret:
             cmd += ' --rpc-secret=%s' % self.rpcSecret
 
-        if not session is None:
+        if session is not None:
             cmd += ' --input-file=%s' \
                    ' --save-session-interval=60' \
                    ' --save-session=%s' % (session, session)

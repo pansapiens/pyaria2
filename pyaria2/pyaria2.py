@@ -113,6 +113,8 @@ class PyAria2(object):
                    ' --save-session-interval=60' \
                    ' --save-session=%s' % (session, session)
 
+            self.check_create_file()
+
         subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
         count = 0
@@ -127,6 +129,12 @@ class PyAria2(object):
                 raise Exception('aria2 RPC server started failure.')
 
         print('aria2 RPC server is started.')
+
+    def check_create_file(self, input_file_path):
+        if os.path.exists(input_file_path):
+            return
+
+        open(input_file_path, 'a').close()
 
     def generateSecret(self):
         def gimmeLetters(how_many):

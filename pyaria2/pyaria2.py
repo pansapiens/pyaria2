@@ -114,11 +114,17 @@ class PyAria2(object):
 
             self.check_create_file()
 
-        subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        aria_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         count = 0
 
         while True:
+            time.sleep(0.5)
+            if aria_process.poll() is not None:
+                out, err = aria_process.communicate()
+                if err:
+                    print(err)
+                    raise Exception("Error starting aria server")
             if isAria2rpcRunning():
                 break
             else:

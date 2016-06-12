@@ -47,7 +47,7 @@ LOWER_PORT_LIMIT = 1024
 
 class PyAria2(object):
     def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, session=None,
-                 rpc_secret=None, max_connections=20, max_downloads=1,
+                 rpc_secret=None, max_connections=16, max_downloads=1,
                  max_download_speed="200K", download_dir=None):
         '''
         PyAria2 constructor.
@@ -56,9 +56,9 @@ class PyAria2(object):
         port: integer, aria2 rpc port, default is 6800
         session: string, aria2 rpc session saving.
         '''
-        if not PyAria2.LOWER_PORT_LIMIT <= port <= PyAria2.UPPER_PORT_LIMIT:
+        if not LOWER_PORT_LIMIT <= port <= UPPER_PORT_LIMIT:
             raise Exception(
-                "port is not between {0} and {1}".format(PyAria2.LOWER_PORT_LIMIT, PyAria2.UPPER_PORT_LIMIT)
+                "port is not between {0} and {1}".format(LOWER_PORT_LIMIT, UPPER_PORT_LIMIT)
             )
 
         if rpc_secret is not None:
@@ -87,7 +87,7 @@ class PyAria2(object):
         if not isAria2rpcRunning():
             self.start_aria_server(session, settings)
         else:
-            pass  # print('aria2 RPC server is already running.')
+            print('aria2 RPC server instance detected')
 
     def start_aria_server(self, session, settings):
         cmd = 'aria2c' \
@@ -101,7 +101,7 @@ class PyAria2(object):
               ' --rpc-max-request-size=1024M' % settings
 
         if self.useSecret:
-            cmd += " --rpc-secret=%s" % self.rpcSecret
+            cmd += ' --rpc-secret=%s' % self.rpcSecret
 
         if not session is None:
             cmd += ' --input-file=%s' \
@@ -166,12 +166,12 @@ class PyAria2(object):
         uris, options = self.fixUris(uris), self.fixOptions(options)
         with open(torrent, "rb") as torrentfile:
             content = torrentfile.read()
-            binaryContent = xmlrpclib.Binary(content)
+            binary_content = xmlrpclib.Binary(content)
             if self.useSecret:
-                fixedSecretPhrase = "token:{}".format(self.rpcSecret)
-                return self.server.aria2.addTorrent(fixedSecretPhrase, binaryContent, uris, options, position)
+                fixedsecretphrase = "token:{}".format(self.rpcSecret)
+                return self.server.aria2.addTorrent(fixedsecretphrase, binary_content, uris, options, position)
             else:
-                return self.server.aria2.addTorrent(binaryContent, uris, options, position)
+                return self.server.aria2.addTorrent(binary_content, uris, options, position)
 
     def addMetalink(self, metalink, options=None, position=None):
         '''
@@ -571,7 +571,7 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-
+        print("Calling shutdown of aria2 server.")
         if self.useSecret:
             return self.server.aria2.shutdown("token:" + self.rpcSecret)
         else:
@@ -583,7 +583,7 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-
+        print("Forcing shutdown of aria2 server.")
         if self.useSecret:
             return self.server.aria2.forceShutdown("token:" + self.rpcSecret)
         else:
@@ -600,8 +600,8 @@ def isAria2Installed():
 
 def isAria2rpcRunning():
     pgrep_process = subprocess.Popen('pgrep -l aria2', shell=True, stdout=subprocess.PIPE)
-
-    if pgrep_process.stdout.readline() == b'':
+    resp_line = pgrep_process.stdout.readline()
+    if resp_line == b'':
         return False
     else:
         return True

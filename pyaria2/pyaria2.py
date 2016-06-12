@@ -90,15 +90,20 @@ class PyAria2(object):
             print('aria2 RPC server instance detected')
 
     def start_aria_server(self, session, settings):
-        cmd = 'aria2c' \
+        raw_cmd = 'aria2c' \
               ' --enable-rpc' \
-              ' --rpc-listen-port %(port)d' \
+              ' --rpc-listen-port {port}' \
               ' --continue' \
-              ' --max-concurrent-downloads=%(max_downloads)s' \
-              ' --max-connection-per-server=%(max_connections)' \
-              ' --max-download-limit=%(max_download_speed)' \
+              ' --max-concurrent-downloads={max_downloads}' \
+              ' --max-connection-per-server={max_connections}' \
+              ' --max-download-limit={max_download_speed}' \
               ' --dir=%(download_dir)s' \
-              ' --rpc-max-request-size=1024M' % settings
+              ' --rpc-max-request-size=1024M'
+
+        if "download_dir" in settings:
+            raw_cmd += ' --dir={download_dir}'
+
+        cmd = raw_cmd.format(**settings)
 
         if self.useSecret:
             cmd += ' --rpc-secret=%s' % self.rpcSecret

@@ -93,7 +93,7 @@ class PyAria2(object):
         raw_cmd = 'aria2c' \
                   ' --enable-rpc' \
                   ' --rpc-listen-port {port}' \
-                  ' --continue' \
+                  ' --continue=true' \
                   ' --max-concurrent-downloads={max_downloads}' \
                   ' --max-connection-per-server={max_connections}' \
                   ' --max-download-limit={max_download_speed}' \

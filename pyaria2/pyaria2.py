@@ -112,7 +112,7 @@ class PyAria2(object):
                    ' --save-session-interval=60' \
                    ' --save-session=%s' % (session, session)
 
-            self.check_create_file()
+            self.check_create_file(session)
 
         aria_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 

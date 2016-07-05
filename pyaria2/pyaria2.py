@@ -96,12 +96,130 @@ class AriaServerSettings(object):
         self.rpc_max_request_size = None
         self.dir = None
 
+        self.log = None
+        self.check_integrity = None
+        self.server_stat_of = None
+        self.server_stat_if = None
+        self.server_stat_timeout = None
+        self.timeout = None
+
+        # Proxy Settings
+        self.all_proxy = None
+        self.http_proxy = None
+        self.https_proxy = None
+        self.ftp_proxy = None
+        self.http_proxy_user = None
+        self.http_proxy_passwd = None
+        self.all_proxy_user = None
+        self.all_proxy_passwd = None
+        self.proxy_method = None
+
         # Download Behavior
         self.max_concurrent_downloads = None
         self.max_connection_per_server = None
         self.max_download_limit = None
-        self.retry_wait = None
+        self.connect_timeout = None
+        self.dry_run = None
+        self.lowest_speed_limit = None
+        self.max_file_not_found = None
         self.max_tries = None
+        self.min_split_size = None
+        self.netrc_path = None
+        self.no_netrc = None
+        self.no_proxy = None
+        self.remote_time = None
+        self.retry_wait = None
+        self.split = None
+        self.stream_piece_selector = None
+        self.uri_selector = None
+
+        # HTTP Specific Options
+        self.ca_certificate = None
+        self.certificate = None
+        self.check_certificate = None
+        self.http_accept_gzip= None
+        self.http_auth_challenge = None
+        self.http_no_cache = None
+        self.http_user = None
+        self.http_passwd = None
+        self.http_proxy = None
+        self.http_proxy_passwd = None
+        self.http_proxy_user = None
+        self.https_proxy = None
+        self.https_proxy_passwd = None
+        self.https_proxy_user = None
+        self.private_key = None
+        self.referer = None
+        self.enable_http_keep_alive = None
+        self.enable_http_pipelining = None
+        self.header = None
+        self.load_cookies = None
+        self.save_cookies = None
+        self.use_head = None
+        self.user_agent = None
+
+        # FTP Specific Options
+        self.ftp_user = None
+        self.ftp_passwd = None
+        self.ftp_pasv = None
+        self.ftp_proxy = None
+        self.ftp_proxy_passwd = None
+        self.ftp_proxy_user = None
+        self.ftp_type = None
+        self.ftp_reuse_connection = None
+
+        # Bittorrent Specific Options
+        self.bt_detach_seed_only = None
+        self.bt_enable_hook_after_hash_check = None
+        self.bt_enable_lpd = None
+        self.bt_exclude_tracker = None
+        self.bt_external_ip = None
+        self.bt_force_encryption = None
+        self.bt_hash_check_seed = None
+        self.bt_lpd_interface = None
+        self.bt_max_open_files = None
+        self.bt_max_peers = None
+        self.bt_metadata_only = None
+        self.bt_min_crypto_level = None
+        self.bt_prioritize_piece = None
+        self.bt_remove_unselected_file = None
+        self.bt_require_crypto = None
+        self.bt_request_peer_speed_limit = None
+        self.bt_save_metadata = None
+        self.bt_seed_unverified = None
+        self.bt_stop_timeout = None
+        self.bt_tracker = None
+        self.bt_tracker_connect_timeout = None
+        self.bt_tracker_interval = None
+        self.bt_tracker_timeout = None
+        self.dht_entry_point = None
+        self.dht_entry_point6 = None
+        self.dht_file_path = None
+        self.dht_file_path6 = None
+        self.dht_listen_addr6 = None
+        self.dht_listen_port = None
+        self.dht_message_timeout = None
+        self.enable_dht = None
+        self.enable_dht6 = None
+        self.enable_peer_exchange = None
+        self.follow_torrent = None
+        self.index_out = None
+        self.listen_port = None
+        self.max_overall_upload_limit = None
+        self.peer_id_prefix = None
+        self.seed_ratio = None
+        self.seed_time = None
+
+        # Metalink Specific Options
+        self.follow_metalink = None
+        self.metalink_base_uri = None
+        self.metalink_file = None
+        self.metalink_language = None
+        self.metalink_location = None
+        self.metalink_os = None
+        self.metalink_version = None
+        self.metalink_preferred_protocol = None
+        self.metalink_enable_unique_protocol = None
 
         # Flag Fields
         self.continue_flag = None
@@ -110,6 +228,9 @@ class AriaServerSettings(object):
         self.rpc_secret = None
 
         self.__dict__.update(**kwargs)
+
+    def check_parameters(self):
+        pass
 
     def construct_as_command_line(self):
         to_set = {}

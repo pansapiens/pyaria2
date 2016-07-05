@@ -10,4 +10,4 @@ aria2 is a lightweight multi-protocol & multi-source command-line download utili
 
 Documentation
 =============
-Documentation can be found at [aria2c man page](http://aria2.sourceforge.net/manual/en/html/aria2c.html#rpc-interface).
+Documentation can be found at [aria2c man page](https://aria2.github.io/manual/en/html/aria2c.html#rpc-interface).

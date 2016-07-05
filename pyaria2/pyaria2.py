@@ -80,75 +80,110 @@ ARIA_ERROR_CODES = {
     32: "If checksum validation failed.",
 }
 
+SAVE_SESSION_INTERVAL_DEFAULT = 60
+
+
+class AriaServerSettings(object):
+    def __init__(self, **kwargs):
+        self.host = DEFAULT_HOST
+
+        # Value Fields
+        # Server Behavior
+        self.rpc_listen_port = DEFAULT_PORT
+        self.save_session = None
+        self.input_file = None  # Should match save_session field
+        self.save_session_interval = SAVE_SESSION_INTERVAL_DEFAULT
+        self.rpc_max_request_size = None
+        self.dir = None
+
+        # Download Behavior
+        self.max_concurrent_downloads = None
+        self.max_connection_per_server = None
+        self.max_download_limit = None
+        self.retry_wait = None
+        self.max_tries = None
+
+        # Flag Fields
+        self.continue_flag = None
+
+        # Other Fields
+        self.rpc_secret = None
+
+        self.__dict__.update(**kwargs)
+
+    def construct_as_command_line(self):
+        to_set = {}
+        for name, value in self.__dict__.items():
+            if value is None:
+                continue
+
+            if name.startswith("_"):
+                continue
+
+            if name.endswith('_flag'):
+                if not isinstance(value, bool):
+                    raise ValueError("Param [%s] is a flag - set True/False" % name)
+                name = name.replace("_flag", "")
+
+            name = name.replace('_', '-')
+            to_set[name] = value
+        return ' '.join(['--%s=%s' % r for r in to_set])
+
 
 class PyAria2(object):
-    def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, session=None,
-                 rpc_secret=None, max_connections=16, max_downloads=1,
-                 max_download_speed="200K", download_dir=None):
+    def __init__(self, server_settings=None):
         '''
         PyAria2 constructor.
 
         host: string, aria2 rpc host, default is 'localhost'
         port: integer, aria2 rpc port, default is 6800
         session: string, aria2 rpc session saving.
+        :type server_settings: AriaServerSettings
         '''
-        if not LOWER_PORT_LIMIT <= port <= UPPER_PORT_LIMIT:
+        if server_settings is None:
+            """
+            Use default settings
+            """
+            server_settings = AriaServerSettings()
+
+        if not LOWER_PORT_LIMIT <= server_settings.rpc_listen_port <= UPPER_PORT_LIMIT:
             raise Exception(
                 "port is not between {0} and {1}".format(LOWER_PORT_LIMIT, UPPER_PORT_LIMIT)
             )
 
-        if rpc_secret is not None:
+        self.useSecret = False
+        if server_settings.rpc_secret is not None:
             self.useSecret = True
-            self.rpcSecret = rpc_secret
-        else:
-            self.useSecret = False
-            self.rpcSecret = None
+            self.rpcSecret = server_settings.rpc_secret
 
         if not isAria2Installed():
             raise Exception('aria2 is not installed, please install it before.')
 
         settings = {
-            "port": port,
-            "max_downloads": max_downloads,
-            "max_connections": max_connections,
-            "max_download_speed": max_download_speed,
+            "port": server_settings.rpc_listen_port,
+            "max_downloads": server_settings.max_concurrent_downloads,
+            "max_connections": server_settings.max_connection_per_server,
+            "max_download_speed": server_settings.max_download_limit,
+            "download_dir": server_settings.dir
         }
 
-        if download_dir is not None:
-            settings["download_dir"] = download_dir
-
-        server_uri = SERVER_URI_FORMAT.format(host, port)
+        server_uri = SERVER_URI_FORMAT.format(server_settings.host, server_settings.rpc_listen_port)
         self.server = xmlrpclib.ServerProxy(server_uri, allow_none=True)
 
         if not isAria2rpcRunning():
-            self.start_aria_server(session, settings)
+            self.start_aria_server(settings, server_settings)
         else:
             print('aria2 RPC server instance detected')
 
-    def start_aria_server(self, session, settings):
-        raw_cmd = 'aria2c' \
-                  ' --enable-rpc' \
-                  ' --rpc-listen-port {port}' \
-                  ' --continue=true' \
-                  ' --max-concurrent-downloads={max_downloads}' \
-                  ' --max-connection-per-server={max_connections}' \
-                  ' --max-download-limit={max_download_speed}' \
-                  ' --rpc-max-request-size=1024M'
+    def start_aria_server(self, server_settings):
+        '''
+        :type server_settings: AriaServerSettings
+        '''
+        command_line_params = server_settings.construct_as_command_line()
+        cmd = 'aria2c {}'.format(command_line_params)
 
-        if "download_dir" in settings:
-            raw_cmd += ' --dir={download_dir}'
-
-        cmd = raw_cmd.format(**settings)
-
-        if self.useSecret:
-            cmd += ' --rpc-secret=%s' % self.rpcSecret
-
-        if session is not None:
-            cmd += ' --input-file=%s' \
-                   ' --save-session-interval=60' \
-                   ' --save-session=%s' % (session, session)
-
-            self.check_create_file(session)
+        if server_settings.save_session is not None:
+            self.check_create_file(server_settings.input_file)
 
         aria_process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -642,6 +677,9 @@ class PyAria2(object):
             return self.server.aria2.forceShutdown("token:" + self.rpcSecret)
         else:
             return self.server.aria2.forceShutdown()
+
+
+
 
 
 def isAria2Installed():

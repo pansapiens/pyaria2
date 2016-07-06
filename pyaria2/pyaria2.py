@@ -83,6 +83,10 @@ ARIA_ERROR_CODES = {
 SAVE_SESSION_INTERVAL_DEFAULT = 60
 
 
+SETTING_IGNORE_FIELDS = [
+    "host",
+]
+
 class AriaServerSettings(object):
     def __init__(self, **kwargs):
         self.host = DEFAULT_HOST
@@ -238,6 +242,9 @@ class AriaServerSettings(object):
             if value is None:
                 continue
 
+            if name in SETTING_IGNORE_FIELDS:
+                continue
+
             if name.startswith("_"):
                 continue
 
@@ -245,10 +252,13 @@ class AriaServerSettings(object):
                 if not isinstance(value, bool):
                     raise ValueError("Param [%s] is a flag - set True/False" % name)
                 name = name.replace("_flag", "")
-
+            if isinstance(value, bool):
+                value = str(value).lower()
             name = name.replace('_', '-')
             to_set[name] = value
-        return ' '.join(['--%s=%s' % r for r in to_set])
+        command = ' '.join(['--%s=%s' % (param, value) for param, value in to_set.items()])
+        return command
+
 
 
 class PyAria2(object):
@@ -280,19 +290,11 @@ class PyAria2(object):
         if not isAria2Installed():
             raise Exception('aria2 is not installed, please install it before.')
 
-        settings = {
-            "port": server_settings.rpc_listen_port,
-            "max_downloads": server_settings.max_concurrent_downloads,
-            "max_connections": server_settings.max_connection_per_server,
-            "max_download_speed": server_settings.max_download_limit,
-            "download_dir": server_settings.dir
-        }
-
         server_uri = SERVER_URI_FORMAT.format(server_settings.host, server_settings.rpc_listen_port)
         self.server = xmlrpclib.ServerProxy(server_uri, allow_none=True)
 
         if not isAria2rpcRunning():
-            self.start_aria_server(settings, server_settings)
+            self.start_aria_server(server_settings)
         else:
             print('aria2 RPC server instance detected')
 
@@ -315,6 +317,7 @@ class PyAria2(object):
             if aria_process.poll() is not None:
                 out, err = aria_process.communicate()
                 if err:
+                    print(out)
                     print(err)
                     raise Exception("Error starting aria server")
             if isAria2rpcRunning():

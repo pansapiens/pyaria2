@@ -303,7 +303,7 @@ class PyAria2(object):
         :type server_settings: AriaServerSettings
         '''
         command_line_params = server_settings.construct_as_command_line()
-        cmd = 'aria2c {}'.format(command_line_params)
+        cmd = 'aria2c --enable-rpc {}'.format(command_line_params)
 
         if server_settings.save_session is not None:
             self.check_create_file(server_settings.input_file)

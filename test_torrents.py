@@ -2,9 +2,9 @@ from pyaria2 import PyAria2 as aria
 import argparse
 
 try:
-  input=raw_input
+    input = raw_input
 except:
-  pass
+    pass
 
 """
 A simple testbed for pyaria2 functionalities.
@@ -21,8 +21,8 @@ parser.add_argument("--shutdown", dest="shutdown", default=True, type=bool)
 parser.add_argument("newtorrent")
 
 args = parser.parse_args()
-server = aria( args.host, args.port,
-               rpcSecret={"useSecret":True, "secret":args.secret})
+server = aria(args.host, args.port,
+              rpcSecret={"useSecret": True, "secret": args.secret})
 
 print("files actually downloaded by aria2c: ", server.tellActive())
 input("press enter to continue...")
@@ -30,7 +30,7 @@ server.addTorrent(args.newtorrent, options=dict(dir="."))
 print("you should have more!", server.tellActive())
 input("press enter to continue...")
 if args.shutdown:
-  server.shutdown()
-  print("server shut down correctly")
+    server.shutdown()
+    print("server shut down correctly")
 
 print("the test was executed correctly. gg.")

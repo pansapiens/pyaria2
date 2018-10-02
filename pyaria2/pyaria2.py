@@ -82,10 +82,10 @@ ARIA_ERROR_CODES = {
 
 SAVE_SESSION_INTERVAL_DEFAULT = 60
 
-
 SETTING_IGNORE_FIELDS = [
     "host",
 ]
+
 
 class AriaServerSettings(object):
     def __init__(self, **kwargs):
@@ -141,7 +141,7 @@ class AriaServerSettings(object):
         self.ca_certificate = None
         self.certificate = None
         self.check_certificate = None
-        self.http_accept_gzip= None
+        self.http_accept_gzip = None
         self.http_auth_challenge = None
         self.http_no_cache = None
         self.http_user = None
@@ -258,7 +258,6 @@ class AriaServerSettings(object):
             to_set[name] = value
         command = ' '.join(['--%s=%s' % (param, value) for param, value in to_set.items()])
         return command
-
 
 
 class PyAria2(object):
@@ -801,9 +800,6 @@ class PyAria2(object):
             return self.server.aria2.forceShutdown("token:" + self.rpcSecret)
         else:
             return self.server.aria2.forceShutdown()
-
-
-
 
 
 def isAria2Installed():

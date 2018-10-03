@@ -28,6 +28,7 @@ Email: killua_hzl@163.com
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 import subprocess
 
 import xmlrpc.client as xmlrpclib
@@ -36,6 +37,8 @@ import time
 
 from string import ascii_letters
 from random import choice
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_HOST = 'localhost'
 DEFAULT_PORT = 6800
@@ -295,7 +298,7 @@ class PyAria2(object):
         if not isAria2rpcRunning():
             self.start_aria_server(server_settings)
         else:
-            print('aria2 RPC server instance detected')
+            logger.info('aria2 RPC server instance detected')
 
     def start_aria_server(self, server_settings):
         '''
@@ -316,8 +319,8 @@ class PyAria2(object):
             if aria_process.poll() is not None:
                 out, err = aria_process.communicate()
                 if err:
-                    print(out)
-                    print(err)
+                    logger.debug(out)
+                    logger.debug(err)
                     raise Exception("Error starting aria server")
             if isAria2rpcRunning():
                 break
@@ -327,7 +330,7 @@ class PyAria2(object):
             if count == 10:
                 raise Exception('aria2 RPC server started failure.')
 
-        print('aria2 RPC server is started.')
+        logger.info('aria2 RPC server is started.')
 
     def check_create_file(self, input_file_path):
         if os.path.exists(input_file_path):
@@ -783,7 +786,7 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        print("Calling shutdown of aria2 server.")
+        logger.info("Calling shutdown of aria2 server.")
         if self.useSecret:
             return self.server.aria2.shutdown("token:" + self.rpcSecret)
         else:
@@ -795,7 +798,7 @@ class PyAria2(object):
 
         return: This method returns OK for success.
         '''
-        print("Forcing shutdown of aria2 server.")
+        logger.info("Forcing shutdown of aria2 server.")
         if self.useSecret:
             return self.server.aria2.forceShutdown("token:" + self.rpcSecret)
         else:
